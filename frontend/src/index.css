@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 228 60% 4%;
+    --foreground: 210 40% 96%;
+
+    --card: 225 40% 11%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 225 40% 11%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 30% 16%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 228 25% 18%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 20% 18%;
+    --input: 225 20% 18%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 228 60% 4%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 230 30% 16%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 225 20% 18%;
+    --sidebar-ring: 217 91% 60%;
+
+    --chart-mint: 160 84% 39%;
+    --chart-blue: 217 91% 60%;
+    --chart-indigo: 245 58% 51%;
+    --chart-amber: 38 92% 50%;
+    --chart-rose: 0 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl;
+  }
+
+  .gradient-card {
+    background: linear-gradient(135deg, hsl(225 40% 13%), hsl(230 35% 18%));
+    @apply border border-border/30 rounded-2xl;
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, hsl(217 91% 60%), hsl(245 58% 51%));
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(217 91% 60%), hsl(245 58% 51%));
+  }
+}
