@@ -26,15 +26,11 @@ async def root():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-    "https://cash-flow-5u8xcordk-mirage-vermas-projects.vercel.app",
-    "http://localhost:5173",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(api_router, prefix="/api/v1")
 
 
