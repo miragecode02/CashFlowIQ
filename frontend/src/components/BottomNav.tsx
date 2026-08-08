@@ -1,12 +1,16 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Calendar, User, MessageCircle, Plus, Mail } from "lucide-react";
+import { Home, Calendar, User, MessageCircle, Plus, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { transactionsApi } from "@/lib/api";
+
+
+
 const tabs = [
   { path: "/",        label: "Home",      icon: Home          },
   { path: "/advisor", label: "AI Advisor", icon: MessageCircle },
+  { path: "/upload",  label: "Import",    icon: Upload        },
   { path: "/planner", label: "Planner",   icon: Calendar      },
   { path: "/profile", label: "Profile",   icon: User          },
 ];

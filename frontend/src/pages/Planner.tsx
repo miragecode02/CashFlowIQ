@@ -55,6 +55,7 @@ export default function Planner() {
   const [form, setForm]         = useState({ ...EMPTY_FORM });
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState("");
+  const [fetchError, setFetchError] = useState("");
   const [activeSection, setActiveSection] = useState<"expense" | "income" | "goals">("expense");
   const [goals, setGoals] = useState(() => {
     try { return JSON.parse(localStorage.getItem("cashflow_goals") || "{}"); }
@@ -70,7 +71,11 @@ export default function Planner() {
       const [fe, s] = await Promise.all([fixedExpensesApi.list(), analyticsApi.summary(12)]);
       setEntries(fe.data);
       setSummary(s.data);
-    } catch (e) { console.error(e); }
+      setFetchError("");
+    } catch (e) {
+      console.error(e);
+      setFetchError("Couldn't refresh — your last change may not be reflected. Pull to retry.");
+    }
     finally { setLoading(false); }
   };
 
@@ -106,15 +111,18 @@ export default function Planner() {
       setShowForm(false);
       setEditId(null);
       setForm({ ...EMPTY_FORM });
-      fetchAll();
+      await fetchAll();
     } catch (e: any) { setError(e.response?.data?.detail || "Failed"); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     setDeleting(id);
-    try { await fixedExpensesApi.delete(id); fetchAll(); }
-    catch (e) { console.error(e); }
+    try { await fixedExpensesApi.delete(id); await fetchAll(); }
+    catch (e) {
+      console.error(e);
+      setFetchError("Couldn't delete — please try again.");
+    }
     finally { setDeleting(null); }
   };
 
@@ -179,6 +187,15 @@ export default function Planner() {
           <h1 className="text-2xl font-black text-white tracking-tight">Fixed Manager</h1>
           <p className="text-xs text-white/40 mt-1">Track recurring income & expenses</p>
         </motion.div>
+
+        {fetchError && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="rounded-2xl p-3 flex items-center justify-between gap-2"
+            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <p className="text-xs text-red-400">{fetchError}</p>
+            <button onClick={fetchAll} className="text-xs font-bold text-red-300 underline shrink-0">Retry</button>
+          </motion.div>
+        )}
 
         {/* summary card */}
         <motion.div variants={fade} custom={1} initial="hidden" animate="show"

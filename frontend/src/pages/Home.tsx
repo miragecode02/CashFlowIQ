@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import {
   TrendingUp, TrendingDown, Plus, X, ArrowUpRight, ArrowDownRight,
-  Zap, Target, ChevronRight, Sparkles, Loader2, Trash2,
+  Zap, Target, ChevronRight, ChevronLeft, Sparkles, Loader2, Trash2,
   AlertTriangle, CheckCircle2, Flame, History
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -80,9 +80,9 @@ function InsightCard({ insight }: { insight: any }) {
 
 type TimeFrame = "daily" | "monthly" | "yearly";
 
-function buildChartData(transactions: any[], timeframe: TimeFrame) {
+function buildChartData(transactions: any[], timeframe: TimeFrame, refDate: Date = new Date()) {
   if (!transactions.length) return [];
-  const now = new Date();
+  const now = refDate;
   if (timeframe === "daily") {
     const hours: Record<string, number> = {};
     for (let i = 23; i >= 0; i--) {
@@ -223,6 +223,8 @@ export default function Home() {
   const [loading, setLoading]         = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [timeframe, setTimeframe]     = useState<TimeFrame>("yearly");
+  const [monthOffset, setMonthOffset] = useState(0); // 0 = current month, -1 = previous month, ...
+  const [yearOffset, setYearOffset]   = useState(0);  // 0 = current year, -1 = previous year, ...
   const [activeTab, setActiveTab]     = useState<"overview" | "budget">("overview");
   const [goals, setGoals]             = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem("cashflow_goals") || "{}"); }
@@ -283,9 +285,17 @@ export default function Home() {
   const savings    = income - spending;
   const savRate    = income > 0 ? (savings / income) * 100 : 0;
   const monthLabel = hasNow ? "this month" : (last ? last.month : "");
-  const chartData  = buildChartData(allTxns, timeframe);
+  const chartRefDate = useMemo(() => {
+    const d = new Date();
+    if (timeframe === "monthly") d.setMonth(d.getMonth() + monthOffset);
+    if (timeframe === "yearly") d.setFullYear(d.getFullYear() + yearOffset);
+    return d;
+  }, [timeframe, monthOffset, yearOffset]);
+  const chartData  = buildChartData(allTxns, timeframe, chartRefDate);
   const timeframeLabels: Record<TimeFrame, string> = {
-    daily: "Today by hour", monthly: "This month by day", yearly: "This year by month"
+    daily: "Today by hour",
+    monthly: `${chartRefDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })} by day`,
+    yearly: `${chartRefDate.getFullYear()} by month`,
   };
 
   const insights = (() => {
@@ -387,7 +397,24 @@ export default function Home() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-bold text-white">Spending Chart</p>
-                <p className="text-[10px] text-white/30 mt-0.5">{timeframeLabels[timeframe]}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {timeframe !== "daily" && (
+                    <button
+                      onClick={() => timeframe === "monthly" ? setMonthOffset(o => o - 1) : setYearOffset(o => o - 1)}
+                      className="h-4 w-4 rounded flex items-center justify-center text-white/30 hover:text-white/60 transition-colors">
+                      <ChevronLeft className="h-3 w-3" />
+                    </button>
+                  )}
+                  <p className="text-[10px] text-white/30">{timeframeLabels[timeframe]}</p>
+                  {timeframe !== "daily" && (
+                    <button
+                      disabled={timeframe === "monthly" ? monthOffset >= 0 : yearOffset >= 0}
+                      onClick={() => timeframe === "monthly" ? setMonthOffset(o => Math.min(0, o + 1)) : setYearOffset(o => Math.min(0, o + 1))}
+                      className="h-4 w-4 rounded flex items-center justify-center text-white/30 hover:text-white/60 transition-colors disabled:opacity-20 disabled:hover:text-white/30">
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex gap-1 bg-white/5 rounded-xl p-1">
                 {(["daily", "monthly", "yearly"] as TimeFrame[]).map(tf => (

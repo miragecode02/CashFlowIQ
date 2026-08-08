@@ -35,7 +35,7 @@ export default function Advisor() {
           setMessages([{
             id: 0,
             role: "assistant",
-            content: `Hey ${user?.name?.split(" ")[0] || "there"}! 👋 I'm your AI Financial Advisor powered by Gemini. Ask me anything about your finances!`,
+            content: `Hey ${user?.name?.split(" ")[0] || "there"}! 👋 I'm your AI Financial Advisor. Ask me anything about your finances!`,
             created_at: new Date().toISOString(),
           }]);
         } else {
@@ -92,7 +92,6 @@ export default function Advisor() {
       <div className="px-4 pt-6 pb-3 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">AI Advisor</h1>
-          <p className="text-xs text-muted-foreground">Powered by Gemini · Context-aware</p>
         </div>
         <button onClick={handleClearHistory} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
           <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />

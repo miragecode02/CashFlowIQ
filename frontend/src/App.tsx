@@ -11,6 +11,7 @@ import Advisor from "./pages/Advisor";
 import FinancialHealth from "./pages/FinancialHealth";
 import Profile from "./pages/Profile";
 import AuthPage from "./pages/Auth";
+import StatementUpload from "./pages/StatementUpload";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -32,6 +33,7 @@ function ProtectedRoutes() {
         <Route path="/advisor" element={<Advisor />} />
         <Route path="/health" element={<FinancialHealth />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/upload" element={<StatementUpload />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />

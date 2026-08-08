@@ -3,7 +3,7 @@ import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001/api/v1";
 export const api = axios.create({
   baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
+  headers: { Accept: "application/json" },
 });
 
 api.interceptors.request.use((config) => {
@@ -26,6 +26,8 @@ api.interceptors.response.use(
 export const authApi = {
   register: (data: { name: string; email: string; password: string }) =>
     api.post("/auth/register", data),
+
+  me: () => api.get("/auth/me"),
 
   login: async (data: { email: string; password: string }) => {
     const formData = new URLSearchParams();
