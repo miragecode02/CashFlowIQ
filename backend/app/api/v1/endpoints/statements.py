@@ -79,6 +79,7 @@ async def upload_statement(
                 amount=t["amount"],
                 type=tx_type,
                 description=t["description"],
+                note=t.get("note"),
                 category_id=cat_id,
                 date=dt,
             ))

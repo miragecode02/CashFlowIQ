@@ -150,7 +150,7 @@ async def apply_monthly_fixed(
             amount=round(amount, 2),
             type=txn_type,
             description=f"[Fixed] {fe.name}",
-            note=f"Auto-applied from Fixed Manager ({fe.frequency})",
+            note=f"Auto-applied from Fixed Manager ({fe.frequency.value})",
             category_id=cat_id,
             date=month_start,
         )

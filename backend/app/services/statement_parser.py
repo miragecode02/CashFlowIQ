@@ -601,6 +601,24 @@ def parse_generic_csv(df: pd.DataFrame) -> list[dict]:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+UPI_NOTE_SKIP = {"no remark", "no remarks", "upi", "upiqr", ""}
+
+
+def clean_upi_description(raw: str) -> tuple[str, Optional[str]]:
+    """UPI narrations pack a reference number, payee name, bank code, VPA, and
+    remark into one slash-delimited string (e.g. "UPI/DR/1234567890/R K SEN/
+    YESB/paytmqr/NO REMARK"). Extract just the payee name for display, keeping
+    the full raw string as a note for anyone who wants the technical detail."""
+    parts = raw.split("/")
+    if len(parts) >= 4 and parts[0].strip().upper() == "UPI":
+        name = parts[3].strip()
+        remark = parts[-1].strip() if len(parts) >= 5 else ""
+        note = remark if remark.lower() not in UPI_NOTE_SKIP else None
+        if name:
+            return name, note
+    return raw, None
+
+
 def parse_bank_statement(file_bytes: bytes, filename: str) -> list[dict]:
     """
     Main parser — routes to PDF or CSV/Excel based on filename.
@@ -616,4 +634,11 @@ def parse_bank_statement(file_bytes: bytes, filename: str) -> list[dict]:
 
     # Filter out invalid entries
     valid = [t for t in transactions if t.get("amount") and t.get("amount") > 0 and t.get("date")]
+
+    for t in valid:
+        clean_desc, note = clean_upi_description(t["description"])
+        t["description"] = clean_desc
+        if note:
+            t["note"] = note
+
     return valid
