@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, Sparkles } from "lucide-react";
+import { TrendingUp, Sparkles, AlertTriangle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-const COLORS = ["hsl(0,84%,60%)", "hsl(217,91%,60%)", "hsl(160,84%,39%)", "hsl(38,92%,50%)", "hsl(245,58%,51%)", "hsl(280,70%,60%)"];
+const COLORS = ["#CE5846", "#DBA342", "#53A27D", "#B87751", "#8a8577", "#b06b84"];
 
 const Analytics = () => {
   const [summary, setSummary] = useState<any>(null);
@@ -65,11 +65,11 @@ const Analytics = () => {
 
   return (
     <motion.div className="space-y-4 pb-24 px-4 pt-6 max-w-md mx-auto" variants={container} initial="hidden" animate="show">
-      <motion.h1 variants={item} className="text-xl font-bold text-foreground">Spending Analytics</motion.h1>
+      <motion.h1 variants={item} className="text-xl font-bold text-foreground tracking-tight">Spending analytics</motion.h1>
 
       {!hasCurrentMonthData && summary?.monthly_trends?.length > 0 && (
-        <motion.div variants={item} className="glass-card p-3 border-l-2 border-l-chart-amber flex items-start gap-2">
-          <Sparkles className="h-4 w-4 text-chart-amber mt-0.5 shrink-0" />
+        <motion.div variants={item} className="glass-card p-3 border-l-2 border-l-chart-clay flex items-start gap-2">
+          <Sparkles className="h-4 w-4 text-chart-clay mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground">Showing data from your imported statement. No transactions recorded for current month yet.</p>
         </motion.div>
       )}
@@ -86,7 +86,7 @@ const Analytics = () => {
           {/* Anomaly Insight */}
           {anomalies.length > 0 && (
             <motion.div variants={item} className="glass-card p-3 border-l-2 border-l-destructive flex items-start gap-2">
-              <Sparkles className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+              <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">{anomalies[0].message}</p>
             </motion.div>
           )}
@@ -98,13 +98,13 @@ const Analytics = () => {
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={summary.monthly_trends}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 18%)" />
-                    <XAxis dataKey="month" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(225, 40%, 11%)", border: "1px solid hsl(225, 20%, 18%)", borderRadius: "8px", color: "hsl(210, 40%, 96%)", fontSize: 12 }}
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 8%, 17%)" />
+                    <XAxis dataKey="month" tick={{ fill: "hsl(32, 8%, 58%)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "hsl(32, 8%, 58%)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(28, 10%, 9%)", border: "1px solid hsl(30, 8%, 17%)", borderRadius: "8px", color: "hsl(40, 22%, 94%)", fontSize: 12 }}
                       formatter={(v: any) => [`₹${Number(v).toLocaleString("en-IN")}`, ""]} />
-                    <Line type="monotone" dataKey="income" stroke="hsl(160,84%,39%)" strokeWidth={2} dot={{ r: 3 }} name="Income" />
-                    <Line type="monotone" dataKey="spending" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={{ r: 3 }} name="Spending" />
+                    <Line type="monotone" dataKey="income" stroke="#53A27D" strokeWidth={2} dot={{ r: 3 }} name="Income" />
+                    <Line type="monotone" dataKey="spending" stroke="#DBA342" strokeWidth={2} dot={{ r: 3 }} name="Spending" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -199,11 +199,11 @@ const Analytics = () => {
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={forecast}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 18%)" />
-                    <XAxis dataKey="day" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}`} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(225, 40%, 11%)", border: "1px solid hsl(225, 20%, 18%)", borderRadius: "8px", color: "hsl(210, 40%, 96%)", fontSize: 12 }} />
-                    <Bar dataKey="amount" fill="hsl(160, 84%, 39%)" radius={[6, 6, 0, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 8%, 17%)" />
+                    <XAxis dataKey="day" tick={{ fill: "hsl(32, 8%, 58%)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "hsl(32, 8%, 58%)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}`} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(28, 10%, 9%)", border: "1px solid hsl(30, 8%, 17%)", borderRadius: "8px", color: "hsl(40, 22%, 94%)", fontSize: 12 }} />
+                    <Bar dataKey="amount" fill="#DBA342" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

@@ -17,7 +17,7 @@ const CircularGauge = ({
   strokeWidth = 8,
   label,
   sublabel,
-  color = "hsl(217, 91%, 60%)",
+  color = "hsl(77, 67%, 68%)",
 }: CircularGaugeProps) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -31,7 +31,7 @@ const CircularGauge = ({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="hsl(225, 20%, 18%)"
+          stroke="rgba(255,255,255,0.06)"
           strokeWidth={strokeWidth}
         />
         <motion.circle
@@ -45,11 +45,11 @@ const CircularGauge = ({
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference - progress }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
+          transition={{ duration: 1.2, ease: [0.32, 0.72, 0, 1] }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-foreground">{value}%</span>
+        <span className="num-display text-2xl font-semibold text-foreground">{value}%</span>
         {label && <span className="text-xs text-muted-foreground">{label}</span>}
       </div>
       {sublabel && <span className="mt-1 text-xs text-muted-foreground">{sublabel}</span>}

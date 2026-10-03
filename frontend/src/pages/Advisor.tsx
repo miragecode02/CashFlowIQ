@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Trash2, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { ArrowUp, Sparkles, RotateCcw } from "lucide-react";
 import { chatApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { EASE } from "@/lib/design";
 
 interface Message {
   id: number;
@@ -35,7 +35,7 @@ export default function Advisor() {
           setMessages([{
             id: 0,
             role: "assistant",
-            content: `Hey ${user?.name?.split(" ")[0] || "there"}! 👋 I'm your AI Financial Advisor. Ask me anything about your finances!`,
+            content: `Hi ${user?.name?.split(" ")[0] || "there"}. I can see your transactions and fixed costs. Ask me anything about your money.`,
             created_at: new Date().toISOString(),
           }]);
         } else {
@@ -45,7 +45,7 @@ export default function Advisor() {
         setMessages([{
           id: 0,
           role: "assistant",
-          content: "Hi! I'm your AI Financial Advisor. How can I help you today?",
+          content: "Hi. I'm your AI financial advisor. What would you like to know?",
           created_at: new Date().toISOString(),
         }]);
       } finally {
@@ -70,7 +70,7 @@ export default function Advisor() {
       const { data } = await chatApi.send(msg);
       setMessages((prev) => [...prev, { id: Date.now() + 1, role: "assistant", content: data.reply, created_at: new Date().toISOString() }]);
     } catch {
-      setMessages((prev) => [...prev, { id: Date.now() + 1, role: "assistant", content: "Sorry, I couldn't connect to the AI service. Please try again.", created_at: new Date().toISOString() }]);
+      setMessages((prev) => [...prev, { id: Date.now() + 1, role: "assistant", content: "I couldn't reach the AI service. Try again in a moment.", created_at: new Date().toISOString() }]);
     } finally {
       setLoading(false);
     }
@@ -78,76 +78,101 @@ export default function Advisor() {
 
   const handleClearHistory = async () => {
     await chatApi.clearHistory();
-    setMessages([{ id: 0, role: "assistant", content: "Chat history cleared. How can I help you?", created_at: new Date().toISOString() }]);
+    setMessages([{ id: 0, role: "assistant", content: "Conversation cleared. What would you like to look at?", created_at: new Date().toISOString() }]);
   };
 
-  if (initializing) return (
-    <div className="flex h-[calc(100dvh-72px)] items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-    </div>
-  );
-
   return (
-    <div className="flex flex-col h-[calc(100dvh-72px)] max-w-md mx-auto">
-      <div className="px-4 pt-6 pb-3 flex items-center justify-between">
+    <main className="mx-auto flex h-[100dvh] max-w-md flex-col lg:max-w-3xl lg:px-6">
+      <header className="flex items-end justify-between px-4 pt-10 pb-4 lg:pt-12">
         <div>
-          <h1 className="text-xl font-bold text-foreground">AI Advisor</h1>
+          <h1 className="text-[1.75rem] font-semibold leading-none">Advisor</h1>
         </div>
-        <button onClick={handleClearHistory} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/70 transition-colors">
-          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+        <button onClick={handleClearHistory} className="btn-ghost px-3 py-2 text-xs" aria-label="Clear conversation">
+          <RotateCcw className="h-3.5 w-3.5" /> Clear
         </button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 space-y-3 pb-4">
-        <AnimatePresence>
-          {messages.map((msg) => (
-            <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              {msg.role === "assistant" && (
-                <div className="h-7 w-7 rounded-full gradient-accent flex items-center justify-center shrink-0 mt-1">
-                  <Bot className="h-3.5 w-3.5 text-primary-foreground" />
-                </div>
-              )}
-              <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${msg.role === "user" ? "gradient-accent text-primary-foreground rounded-br-md" : "glass-card text-foreground rounded-bl-md"}`}>
-                {msg.content}
-              </div>
-              {msg.role === "user" && (
-                <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-1">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      </header>
+
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 pt-2 pb-4" aria-live="polite">
+        {initializing ? (
+          <div className="space-y-3" aria-busy="true">
+            <div className="skeleton h-16 w-[75%] rounded-[1.25rem]" />
+            <div className="skeleton ml-auto h-10 w-[55%] rounded-[1.25rem]" />
+            <div className="skeleton h-24 w-[80%] rounded-[1.25rem]" />
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => (
+              <motion.div key={msg.id}
+                initial={{ opacity: 0, y: 12, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.5, ease: EASE }}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" ? (
+                  <div className="flex max-w-[88%] gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="whitespace-pre-wrap rounded-[1.25rem] rounded-tl-md bg-card px-4 py-3 text-sm leading-relaxed text-foreground/90 ring-1 ring-inset ring-white/[0.06]">
+                      {msg.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-w-[80%] whitespace-pre-wrap rounded-[1.25rem] rounded-br-md bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
+                    {msg.content}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+
         {loading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
-            <div className="h-7 w-7 rounded-full gradient-accent flex items-center justify-center shrink-0">
-              <Bot className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <div className="glass-card px-4 py-3 rounded-2xl rounded-bl-md">
-              <div className="flex gap-1">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <div className="rounded-[1.25rem] rounded-tl-md bg-card px-4 py-3.5 ring-1 ring-inset ring-white/[0.06]">
+              <div className="flex gap-1" aria-label="Advisor is typing">
                 {[0, 0.15, 0.3].map((delay, i) => (
-                  <motion.div key={i} className="h-1.5 w-1.5 rounded-full bg-muted-foreground" animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay }} />
+                  <motion.span key={i} className="h-1.5 w-1.5 rounded-full bg-muted-foreground"
+                    animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay }} />
                 ))}
               </div>
             </div>
           </motion.div>
         )}
-        {messages.length <= 1 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex flex-wrap gap-2 mt-2">
-            {suggestedPrompts.map((p) => (
-              <button key={p} onClick={() => handleSend(p)} className="text-[11px] px-3 py-1.5 rounded-full border border-primary/30 text-primary hover:bg-primary/10 transition-colors">{p}</button>
-            ))}
+
+        {!initializing && messages.length <= 1 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
+            className="pt-4">
+            <h2 className="mb-3 text-sm font-medium text-foreground/80">Try asking</h2>
+            <div className="grid gap-2">
+              {suggestedPrompts.map((p) => (
+                <button key={p} onClick={() => handleSend(p)}
+                  className="group flex items-center justify-between rounded-full bg-white/[0.03] px-5 py-3 text-left text-sm text-foreground/80 ring-1 ring-inset ring-white/[0.06] transition-all duration-300 ease-premium hover:bg-white/[0.06] hover:text-foreground active:scale-[0.99]">
+                  {p}
+                  <ArrowUp className="h-4 w-4 rotate-45 text-muted-foreground transition-transform duration-300 ease-premium group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="px-4 pb-4 pt-2 border-t border-border/40">
-        <div className="flex gap-2">
-          <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="Ask about your finances..." className="bg-secondary border-border/50 text-foreground text-xs" disabled={loading} />
-          <button onClick={() => handleSend()} disabled={loading || !input.trim()} className="h-10 w-10 rounded-xl gradient-accent flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity disabled:opacity-50">
-            <Send className="h-4 w-4 text-primary-foreground" />
+
+      {/* composer — sits above the floating nav */}
+      <div className="px-4 pt-2 pb-[6.5rem] lg:pb-8">
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+          className="flex items-center gap-2 rounded-full bg-card p-1.5 pl-5 ring-1 ring-inset ring-white/[0.08] transition-shadow duration-300 focus-within:ring-primary/40">
+          <input value={input} onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about your finances…" aria-label="Message"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+            disabled={loading} />
+          <button type="submit" disabled={loading || !input.trim()} aria-label="Send"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all duration-300 ease-premium hover:brightness-105 active:scale-95 disabled:bg-white/[0.06] disabled:text-muted-foreground">
+            <ArrowUp className="h-4 w-4" />
           </button>
-        </div>
+        </form>
       </div>
-    </div>
+    </main>
   );
 }

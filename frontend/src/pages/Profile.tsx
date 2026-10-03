@@ -1,20 +1,11 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Settings, Bell, HelpCircle, LogOut, ChevronRight,
-  X, Loader2, CheckCircle2, Zap, Shield
+  Settings2, Bell, LifeBuoy, LogOut, ChevronRight, Check, Fingerprint, ArrowUpRight
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { analyticsApi, transactionsApi } from "@/lib/api";
-
-const fade = {
-  hidden: { opacity: 0, y: 16 },
-  show: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] } })
-};
-
-const fmtK = (n: number) =>
-  n >= 100000 ? `₹${(n/100000).toFixed(1)}L` : n >= 1000 ? `₹${(n/1000).toFixed(1)}k` : `₹${Math.round(n).toLocaleString("en-IN")}`;
+import { BottomSheet, fade, PageHeader } from "@/lib/design";
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -43,7 +34,7 @@ export default function Profile() {
 
   const joinedDate = user?.created_at
     ? new Date(user.created_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" })
-    : "Recently";
+    : "recently";
 
   const monthsActive = user?.created_at
     ? Math.max(1, Math.round((Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30)))
@@ -52,194 +43,149 @@ export default function Profile() {
   const savingsRate = summary?.savings_rate || 0;
 
   const stats = [
-    { label: "Transactions", value: txnCount.toString(),    color: "text-indigo-400" },
-    { label: "Savings Rate", value: `${savingsRate.toFixed(0)}%`, color: "text-emerald-400" },
-    { label: "Months Active", value: monthsActive.toString(), color: "text-blue-400" },
+    { label: "Transactions",  value: txnCount.toString() },
+    { label: "Savings rate",  value: `${savingsRate.toFixed(0)}%` },
+    { label: "Months active", value: monthsActive.toString() },
+  ];
+
+  const menu = [
+    { icon: Bell,        label: "Notifications",  sub: "Transaction and budget alerts" },
+    { icon: Fingerprint, label: "Privacy & data", sub: "Export or delete your data" },
+    { icon: LifeBuoy,    label: "Help & support", sub: "Common questions" },
   ];
 
   return (
     <>
-      <div className="pb-28 max-w-md mx-auto px-4 pt-8 space-y-4">
-
-        {/* header */}
+      <main className="mx-auto max-w-md space-y-4 px-4 pb-32 lg:max-w-2xl lg:px-10 lg:pb-16">
         <motion.div variants={fade} custom={0} initial="hidden" animate="show">
-          <h1 className="text-2xl font-black text-white tracking-tight">Profile</h1>
+          <PageHeader title="Profile" />
         </motion.div>
 
-        {/* user card — no ring, no health bar */}
-        <motion.div variants={fade} custom={1} initial="hidden" animate="show">
-          <div className="relative overflow-hidden rounded-3xl p-5"
-            style={{ background: "linear-gradient(135deg, #1a1f3e 0%, #0f172a 100%)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-20"
-              style={{ background: "radial-gradient(circle, #6366f1, transparent)" }} />
-
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shrink-0"
-                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+        {/* identity */}
+        <motion.section variants={fade} custom={1} initial="hidden" animate="show" className="bezel">
+          <div className="bezel-core bezel-hero p-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] bg-primary text-2xl font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-lg font-black text-white truncate">{user?.name}</p>
-                <p className="text-xs text-white/40 truncate">{user?.email}</p>
-                <div className="mt-1.5">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
-                    Member since {joinedDate}
-                  </span>
-                </div>
+              <div className="min-w-0 flex-1 pt-1">
+                <p className="truncate text-lg font-semibold">{user?.name}</p>
+                <p className="truncate text-sm text-muted-foreground">{user?.email}</p>
               </div>
-              <button onClick={() => setShowEdit(true)}
-                className="h-8 w-8 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                <Settings className="h-3.5 w-3.5 text-white/40" />
+              <button onClick={() => setShowEdit(true)} className="icon-btn" aria-label="Edit profile">
+                <Settings2 className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </motion.div>
-
-        {/* stats */}
-        <motion.div variants={fade} custom={2} initial="hidden" animate="show" className="grid grid-cols-3 gap-3">
-          {stats.map(s => (
-            <div key={s.label} className="rounded-2xl p-3 text-center"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className={`text-xl font-black ${s.color}`}>{loading ? "—" : s.value}</p>
-              <p className="text-[10px] text-white/30 mt-0.5">{s.label}</p>
+            <div className="mt-6 grid grid-cols-3 divide-x divide-white/[0.06]">
+              {stats.map(s => (
+                <div key={s.label} className="px-3 first:pl-0 last:pr-0">
+                  {loading
+                    ? <div className="skeleton h-7 w-12 rounded-lg" />
+                    : <p className="num-display text-2xl font-semibold">{s.value}</p>}
+                  <p className="mt-1 text-[11px] text-muted-foreground">{s.label}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </motion.div>
+            <p className="mt-5 text-[11px] text-muted-foreground/70">Member since {joinedDate}</p>
+          </div>
+        </motion.section>
 
         {/* menu */}
-        <motion.div variants={fade} custom={3} initial="hidden" animate="show"
-          className="rounded-3xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          {[
-            { icon: Bell,       label: "Notifications",  sub: "Transaction & budget alerts", color: "#f97316" },
-            { icon: Shield,     label: "Privacy & Data", sub: "Export or delete your data",  color: "#6366f1" },
-            { icon: HelpCircle, label: "Help & Support", sub: "FAQs and contact",            color: "#06b6d4" },
-          ].map(m => (
-            <button key={m.label} onClick={() => setActiveModal(m.label)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-              <div className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: `${m.color}20` }}>
-                <m.icon className="h-4 w-4" style={{ color: m.color }} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-white">{m.label}</p>
-                <p className="text-[10px] text-white/30">{m.sub}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-white/20" />
-            </button>
-          ))}
-        </motion.div>
+        <motion.section variants={fade} custom={2} initial="hidden" animate="show" className="bezel">
+          <div className="bezel-core overflow-hidden p-1.5">
+            {menu.map(m => (
+              <button key={m.label} onClick={() => setActiveModal(m.label)}
+                className="group flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left transition-colors duration-300 hover:bg-white/[0.04]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-white/[0.05] text-foreground/70 ring-1 ring-inset ring-white/[0.06]">
+                  <m.icon className="h-4 w-4" />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-sm font-medium">{m.label}</span>
+                  <span className="block text-[11px] text-muted-foreground">{m.sub}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform duration-300 ease-premium group-hover:translate-x-0.5" />
+              </button>
+            ))}
+          </div>
+        </motion.section>
 
-        {/* logout */}
-        <motion.button variants={fade} custom={4} initial="hidden" animate="show"
+        <motion.button variants={fade} custom={3} initial="hidden" animate="show"
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-red-400 transition-colors"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <LogOut className="h-4 w-4" /> Log Out
+          className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-medium text-destructive ring-1 ring-inset ring-destructive/20 transition-all duration-300 ease-premium hover:bg-destructive/10 active:scale-[0.98]">
+          <LogOut className="h-4 w-4" /> Log out
         </motion.button>
 
-        <motion.div variants={fade} custom={5} initial="hidden" animate="show" className="text-center pb-2">
-          <p className="text-[10px] text-white/15">Cash Flow IQ · v1.0</p>
-        </motion.div>
-      </div>
+        <p className="pt-2 text-center text-[11px] text-muted-foreground/50">Cash Flow IQ · v1.0</p>
+      </main>
 
-      {/* edit profile modal */}
-      <AnimatePresence>
-        {showEdit && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end justify-center px-4 pb-6"
-            onClick={e => { if (e.target === e.currentTarget) setShowEdit(false); }}>
-            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="w-full max-w-md rounded-3xl p-5 space-y-4 mb-16"
-              style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <div className="flex items-center justify-between">
-                <p className="text-base font-black text-white">Edit Profile</p>
-                <button onClick={() => setShowEdit(false)} className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center">
-                  <X className="h-3.5 w-3.5 text-white/60" />
-                </button>
-              </div>
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-widest block mb-1.5">Full Name</label>
-                <Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white rounded-xl" />
-              </div>
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-widest block mb-1.5">Email</label>
-                <Input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white rounded-xl" />
-              </div>
-              {saved && (
-                <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-xl">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <p className="text-xs font-semibold">Profile updated!</p>
-                </div>
-              )}
-              <p className="text-[10px] text-white/20">Name changes apply on next login.</p>
-              <button onClick={() => { setSaved(true); setTimeout(() => { setSaved(false); setShowEdit(false); }, 1500); }}
-                className="w-full py-3.5 rounded-2xl font-black text-sm text-white"
-                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                Save Changes
-              </button>
-            </motion.div>
-          </motion.div>
+      {/* edit profile */}
+      <BottomSheet open={showEdit} onClose={() => setShowEdit(false)} title="Edit profile">
+        <div>
+          <label htmlFor="pf-name" className="field-label">Full name</label>
+          <input id="pf-name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="field w-full" />
+        </div>
+        <div>
+          <label htmlFor="pf-email" className="field-label">Email</label>
+          <input id="pf-email" type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} className="field w-full" />
+        </div>
+        {saved && (
+          <div className="flex items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2.5 text-primary">
+            <Check className="h-4 w-4" />
+            <p className="text-xs font-medium">Profile updated</p>
+          </div>
         )}
-      </AnimatePresence>
+        <p className="text-[11px] text-muted-foreground">Name changes apply on next login.</p>
+        <button onClick={() => { setSaved(true); setTimeout(() => { setSaved(false); setShowEdit(false); }, 1500); }}
+          className="btn-primary w-full justify-between">
+          <span>Save changes</span>
+          <span className="btn-primary-icon"><ArrowUpRight className="h-4 w-4" /></span>
+        </button>
+      </BottomSheet>
 
-      {/* info modals */}
-      <AnimatePresence>
-        {activeModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end justify-center px-4 pb-6"
-            onClick={e => { if (e.target === e.currentTarget) setActiveModal(null); }}>
-            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="w-full max-w-md rounded-3xl p-5 space-y-4 mb-16"
-              style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <div className="flex items-center justify-between">
-                <p className="text-base font-black text-white">{activeModal}</p>
-                <button onClick={() => setActiveModal(null)} className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center">
-                  <X className="h-3.5 w-3.5 text-white/60" />
-                </button>
-              </div>
-              {activeModal === "Notifications" && (
-                <div className="space-y-3">
-                  {["Transaction alerts", "Budget warnings", "Weekly summary", "AI insights"].map(n => (
-                    <div key={n} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <p className="text-sm text-white/70">{n}</p>
-                      <div className="h-6 w-11 rounded-full bg-indigo-500/40 border border-indigo-500/30 flex items-center px-1">
-                        <div className="h-4 w-4 rounded-full bg-indigo-400 ml-auto" />
-                      </div>
-                    </div>
-                  ))}
-                  <p className="text-xs text-white/20 text-center pt-1">Full notification settings coming soon</p>
+      {/* info sheets */}
+      <BottomSheet open={!!activeModal} onClose={() => setActiveModal(null)} title={activeModal || ""}>
+        {activeModal === "Notifications" && (
+          <div>
+            <div className="divide-y divide-white/[0.05]">
+              {["Transaction alerts", "Budget warnings", "Weekly summary", "AI insights"].map(n => (
+                <div key={n} className="flex items-center justify-between py-3">
+                  <p className="text-sm text-foreground/80">{n}</p>
+                  <span className="flex h-6 w-11 items-center rounded-full bg-primary/30 px-0.5" aria-hidden>
+                    <span className="ml-auto h-5 w-5 rounded-full bg-primary" />
+                  </span>
                 </div>
-              )}
-              {activeModal === "Privacy & Data" && (
-                <div className="space-y-3">
-                  <p className="text-xs text-white/50 leading-relaxed">Your financial data is stored locally and encrypted at rest. We never sell your data.</p>
-                  <button className="w-full py-3 rounded-2xl text-sm font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">Export All Data (CSV)</button>
-                  <button className="w-full py-3 rounded-2xl text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20">Delete Account & Data</button>
-                </div>
-              )}
-              {activeModal === "Help & Support" && (
-                <div className="space-y-3">
-                  {[
-                    { q: "How do I import transactions?", a: "Go to Import tab and upload your bank statement PDF or CSV." },
-                    { q: "Which banks are supported?",    a: "HDFC, SBI, ICICI, Axis, Kotak, Yes Bank and most Indian banks." },
-                    { q: "Is my data secure?",            a: "Yes — all data stays on your local device and is never shared." },
-                    { q: "How does AI Insights work?",    a: "We analyse your spending patterns locally to generate personalised insights." },
-                  ].map(faq => (
-                    <div key={faq.q} className="rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-                      <p className="text-xs font-bold text-white mb-1">{faq.q}</p>
-                      <p className="text-xs text-white/40 leading-relaxed">{faq.a}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
+              ))}
+            </div>
+            <p className="pt-3 text-center text-[11px] text-muted-foreground">Notification controls are coming soon.</p>
+          </div>
         )}
-      </AnimatePresence>
+        {activeModal === "Privacy & data" && (
+          <div className="space-y-3">
+            <p className="text-sm leading-relaxed text-muted-foreground">Your financial data is stored in your Cash Flow IQ account. We never sell it.</p>
+            <button disabled className="btn-ghost w-full justify-between opacity-60">
+              Export all data (CSV) <span className="text-[11px] text-muted-foreground">Soon</span>
+            </button>
+            <button disabled className="flex w-full items-center justify-between rounded-full px-4 py-2.5 text-sm font-medium text-destructive/70 ring-1 ring-inset ring-destructive/15 opacity-60">
+              Delete account and data <span className="text-[11px] text-muted-foreground">Soon</span>
+            </button>
+          </div>
+        )}
+        {activeModal === "Help & support" && (
+          <div className="divide-y divide-white/[0.05]">
+            {[
+              { q: "How do I import transactions?", a: "Open the Import tab and upload your bank statement as a PDF, CSV or Excel file." },
+              { q: "Which banks are supported?",    a: "HDFC, SBI, ICICI, Axis, Kotak, Yes Bank and most other Indian banks." },
+              { q: "Is my data secure?",            a: "Your data is tied to your account and is never shared with third parties." },
+              { q: "How do insights work?",         a: "We look at your spending patterns to flag trends, heavy categories and savings gaps." },
+            ].map(faq => (
+              <div key={faq.q} className="py-3 first:pt-0 last:pb-0">
+                <p className="text-sm font-medium">{faq.q}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </BottomSheet>
     </>
   );
 }

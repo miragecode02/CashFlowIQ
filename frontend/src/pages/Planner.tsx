@@ -1,13 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Trash2, Loader2, Edit2, TrendingUp, TrendingDown, Zap, Target } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Plus, Trash2, Loader2, Pencil, Lightbulb, ArrowUpRight, Check } from "lucide-react";
 import { fixedExpensesApi, analyticsApi } from "@/lib/api";
-
-const fade = {
-  hidden: { opacity: 0, y: 16 },
-  show: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.4, ease: [0.22, 1, 0.36, 1] } })
-};
+import { BottomSheet, CategoryIcon, COLOR, EASE, fade, PageHeader, SkeletonPage, SPRING } from "@/lib/design";
 
 const FREQ_OPTIONS = [
   { value: "monthly", label: "Monthly" },
@@ -15,6 +10,7 @@ const FREQ_OPTIONS = [
   { value: "weekly",  label: "Weekly"  },
 ];
 
+// emoji is still stored on the entry for backward compatibility; the UI renders icons
 const EXPENSE_CATS = [
   { name: "Housing",       emoji: "🏠" },
   { name: "Utilities",     emoji: "⚡" },
@@ -65,6 +61,7 @@ export default function Planner() {
     savings_target: goals.savings_target ?? 30,
     investment_target: goals.investment_target ?? 20,
   });
+  const [goalsSaved, setGoalsSaved] = useState(false);
 
   const fetchAll = async () => {
     try {
@@ -74,7 +71,7 @@ export default function Planner() {
       setFetchError("");
     } catch (e) {
       console.error(e);
-      setFetchError("Couldn't refresh — your last change may not be reflected. Pull to retry.");
+      setFetchError("Couldn't refresh. Your last change may not be shown yet.");
     }
     finally { setLoading(false); }
   };
@@ -102,7 +99,7 @@ export default function Planner() {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.amount) { setError("Fill all fields"); return; }
+    if (!form.name || !form.amount) { setError("Fill in every field to continue."); return; }
     setSaving(true); setError("");
     try {
       const payload = { name: form.name, amount: parseFloat(form.amount), frequency: form.frequency, entry_type: form.entry_type, category: form.category, emoji: form.emoji };
@@ -112,7 +109,7 @@ export default function Planner() {
       setEditId(null);
       setForm({ ...EMPTY_FORM });
       await fetchAll();
-    } catch (e: any) { setError(e.response?.data?.detail || "Failed"); }
+    } catch (e: any) { setError(e.response?.data?.detail || "Couldn't save this entry. Try again."); }
     finally { setSaving(false); }
   };
 
@@ -121,7 +118,7 @@ export default function Planner() {
     try { await fixedExpensesApi.delete(id); await fetchAll(); }
     catch (e) {
       console.error(e);
-      setFetchError("Couldn't delete — please try again.");
+      setFetchError("Couldn't delete that entry. Try again.");
     }
     finally { setDeleting(null); }
   };
@@ -131,348 +128,302 @@ export default function Planner() {
     fetchAll();
   };
 
+  const saveGoals = () => {
+    localStorage.setItem("cashflow_goals", JSON.stringify(goalForm));
+    setGoals(goalForm);
+    window.dispatchEvent(new Event("goals-updated"));
+    setGoalsSaved(true);
+    setTimeout(() => setGoalsSaved(false), 1600);
+  };
+
   const cats = form.entry_type === "income" ? INCOME_CATS : EXPENSE_CATS;
   const pickCat = (name: string) => {
     const opt = cats.find(c => c.name === name);
     setForm(f => ({ ...f, category: name, emoji: opt?.emoji || "📌" }));
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center min-h-screen">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
+  if (loading) return <SkeletonPage blocks={["h-44", "h-11", "h-20", "h-20", "h-20"]} />;
 
   const renderEntry = (e: any, i: number) => {
     const monthly = toMonthly(e.amount, e.frequency);
     const isIncome = e.entry_type === "income";
     return (
       <motion.div key={e.id} variants={fade} custom={i} initial="hidden" animate="show"
-        className={`rounded-2xl p-4 flex items-center gap-3 transition-opacity ${!e.is_active ? "opacity-40" : ""}`}
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <button onClick={() => handleToggle(e)}
-          className="h-11 w-11 rounded-xl flex items-center justify-center text-xl shrink-0"
-          style={{ background: e.is_active ? (isIncome ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)") : "rgba(255,255,255,0.05)" }}>
-          {e.emoji}
+        className={`group flex items-center gap-3 py-3.5 transition-opacity duration-500 ${!e.is_active ? "opacity-40" : ""}`}>
+        <button onClick={() => handleToggle(e)} aria-label={e.is_active ? `Pause ${e.name}` : `Resume ${e.name}`}
+          title={e.is_active ? "Tap to pause" : "Tap to resume"}
+          className="rounded-[13px] transition-transform duration-300 ease-premium active:scale-95">
+          <CategoryIcon name={e.category} tone={e.is_active ? (isIncome ? COLOR.income : COLOR.expense) : COLOR.neutral} />
         </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-white truncate">{e.name}</p>
-          <p className="text-[10px] text-white/30 mt-0.5">{e.category} · {FREQ_OPTIONS.find(f => f.value === e.frequency)?.label}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{e.name}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {e.category} · {FREQ_OPTIONS.find(f => f.value === e.frequency)?.label}
+            {!e.is_active && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-px text-[10px] text-foreground/70">Paused</span>}
+          </p>
         </div>
-        <div className="text-right shrink-0 mr-1">
-          <p className={`text-sm font-black ${isIncome ? "text-emerald-400" : "text-red-400"}`}>
+        <div className="shrink-0 text-right">
+          <p className={`text-sm font-medium font-mono-nums ${isIncome ? "text-primary" : "text-foreground"}`}>
             {isIncome ? "+" : "−"}₹{e.amount.toLocaleString("en-IN")}
           </p>
           {e.frequency !== "monthly" && (
-            <p className="text-[10px] text-white/25">≈ {fmtK(monthly)}/mo</p>
+            <p className="text-[11px] text-muted-foreground font-mono-nums">≈ {fmtK(monthly)}/mo</p>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
-          <button onClick={() => openEdit(e)} className="h-7 w-7 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-            <Edit2 className="h-3 w-3 text-white/40" />
+        <div className="flex shrink-0 gap-0.5">
+          <button onClick={() => openEdit(e)} aria-label={`Edit ${e.name}`}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-300 hover:bg-white/[0.06] hover:text-foreground">
+            <Pencil className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => handleDelete(e.id)} disabled={deleting === e.id}
-            className="h-7 w-7 rounded-lg bg-red-500/10 flex items-center justify-center hover:bg-red-500/20 transition-colors">
-            {deleting === e.id ? <Loader2 className="h-3 w-3 animate-spin text-red-400" /> : <Trash2 className="h-3 w-3 text-red-400" />}
+          <button onClick={() => handleDelete(e.id)} disabled={deleting === e.id} aria-label={`Delete ${e.name}`}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-300 hover:bg-destructive/15 hover:text-destructive">
+            {deleting === e.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </button>
         </div>
       </motion.div>
     );
   };
 
+  const list = activeSection === "income" ? incomes : expenses;
+  const maxSide = Math.max(totalIncome, totalExpense) || 1;
+  const fixedRatio = totalIncome > 0 ? totalExpense / totalIncome : 0;
+
   return (
     <>
-      <div className="pb-28 max-w-md mx-auto px-4 pt-8 space-y-5">
-        <motion.div variants={fade} custom={0} initial="hidden" animate="show">
-          <h1 className="text-2xl font-black text-white tracking-tight">Fixed Manager</h1>
-          <p className="text-xs text-white/40 mt-1">Track recurring income & expenses</p>
+      <main className="mx-auto max-w-md space-y-5 px-4 pb-32 lg:grid lg:max-w-[1180px] lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-5 lg:space-y-0 lg:px-10 lg:pb-16">
+        <motion.div variants={fade} custom={0} initial="hidden" animate="show" className="lg:col-span-12">
+          <PageHeader title="Planner" sub="Salary, rent, EMIs and subscriptions. They're applied to your ledger at the start of each month." />
         </motion.div>
 
         {fetchError && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="rounded-2xl p-3 flex items-center justify-between gap-2"
-            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-            <p className="text-xs text-red-400">{fetchError}</p>
-            <button onClick={fetchAll} className="text-xs font-bold text-red-300 underline shrink-0">Retry</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} role="alert"
+            className="flex items-center justify-between gap-3 rounded-2xl bg-destructive/10 px-4 py-3 ring-1 ring-inset ring-destructive/20 lg:col-span-12">
+            <p className="text-xs text-destructive">{fetchError}</p>
+            <button onClick={fetchAll} className="shrink-0 text-xs font-medium text-destructive underline underline-offset-4">Retry</button>
           </motion.div>
         )}
 
-        {/* summary card */}
-        <motion.div variants={fade} custom={1} initial="hidden" animate="show"
-          className="rounded-3xl p-5" style={{ background: "linear-gradient(135deg, #1a1f3e 0%, #0f172a 100%)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-3">Monthly Fixed Overview</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center">
-              <p className="text-lg font-black text-emerald-400">{fmtK(totalIncome)}</p>
-              <p className="text-[10px] text-white/30 mt-0.5">Fixed Income</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-black text-red-400">{fmtK(totalExpense)}</p>
-              <p className="text-[10px] text-white/30 mt-0.5">Fixed Costs</p>
-            </div>
-            <div className="text-center">
-              <p className={`text-lg font-black ${netFixed >= 0 ? "text-indigo-400" : "text-orange-400"}`}>
-                {netFixed >= 0 ? "+" : ""}{fmtK(netFixed)}
-              </p>
-              <p className="text-[10px] text-white/30 mt-0.5">Net Fixed</p>
+        {/* summary */}
+        <motion.section variants={fade} custom={1} initial="hidden" animate="show" className="bezel lg:sticky lg:top-8 lg:col-span-5 lg:row-span-3">
+          <div className="bezel-core bezel-hero p-5">
+            <p className="text-xs text-muted-foreground">Net fixed per month</p>
+            <p className={`num-display mt-2 text-[2.75rem] font-semibold leading-none ${netFixed >= 0 ? "text-foreground" : "text-destructive"}`}>
+              {netFixed >= 0 ? "+" : "−"}{fmtK(Math.abs(netFixed))}
+            </p>
+
+            <div className="mt-6 space-y-3">
+              {[
+                { label: "Fixed income", value: totalIncome, color: COLOR.seriesIncome },
+                { label: "Fixed costs",  value: totalExpense, color: COLOR.seriesSpend },
+              ].map((row, i) => (
+                <div key={row.label}>
+                  <div className="mb-1.5 flex items-baseline justify-between">
+                    <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: row.color }} />{row.label}
+                    </p>
+                    <p className="text-sm font-medium font-mono-nums">{fmtK(row.value)}</p>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full" style={{ background: COLOR.track }}>
+                    <motion.div className="h-full origin-left rounded-full"
+                      style={{ background: row.color, width: `${(row.value / maxSide) * 100}%` }}
+                      initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
+                      transition={{ duration: 1.2, delay: 0.2 + i * 0.1, ease: EASE }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-
-          {(totalIncome > 0 || totalExpense > 0) && (
-            <div>
-              <div className="h-3 bg-white/5 rounded-full overflow-hidden flex mb-2">
-                <motion.div className="h-full rounded-l-full" style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${totalIncome > 0 ? Math.min((totalIncome / Math.max(totalIncome, totalExpense)) * 100, 100) : 0}%` }}
-                  transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }} />
-                <motion.div className="h-full rounded-r-full" style={{ background: "linear-gradient(90deg, #ef4444, #dc2626)" }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${totalExpense > 0 ? Math.min((totalExpense / Math.max(totalIncome, totalExpense)) * 100, 100) : 0}%` }}
-                  transition={{ duration: 1.2, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} />
-              </div>
-              <div className="flex justify-between">
-                <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-emerald-500" /><p className="text-[9px] text-white/25">Income</p></div>
-                <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-red-500" /><p className="text-[9px] text-white/25">Expenses</p></div>
-              </div>
-            </div>
-          )}
-        </motion.div>
+        </motion.section>
 
         {/* section tabs */}
-        <motion.div variants={fade} custom={2} initial="hidden" animate="show">
-          <div className="flex gap-1 p-1 bg-white/5 rounded-2xl">
-            <button onClick={() => setActiveSection("income")}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSection === "income" ? "bg-emerald-500/20 text-emerald-400" : "text-white/30"}`}>
-              <TrendingUp className="h-3.5 w-3.5" /> Income ({incomes.length})
+        <motion.div variants={fade} custom={2} initial="hidden" animate="show" className="segmented lg:col-span-7 lg:col-start-6" role="tablist">
+          {([
+            { key: "income",  label: `Income`, count: incomes.length },
+            { key: "expense", label: `Costs`,  count: expenses.length },
+            { key: "goals",   label: `Goals` },
+          ] as const).map(t => (
+            <button key={t.key} onClick={() => setActiveSection(t.key)} role="tab" aria-selected={activeSection === t.key}
+              className={`segmented-item py-2.5 text-sm ${activeSection === t.key ? "text-foreground" : ""}`}>
+              {activeSection === t.key && (
+                <motion.span layoutId="planner-tab" className="absolute inset-0 rounded-full bg-white/[0.09] ring-1 ring-inset ring-white/[0.06]"
+                  transition={SPRING} />
+              )}
+              <span className="relative">
+                {t.label}
+                {"count" in t && <span className="ml-1.5 text-[11px] text-muted-foreground font-mono-nums">{t.count}</span>}
+              </span>
             </button>
-            <button onClick={() => setActiveSection("expense")}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSection === "expense" ? "bg-red-500/20 text-red-400" : "text-white/30"}`}>
-              <TrendingDown className="h-3.5 w-3.5" /> Costs ({expenses.length})
-            </button>
-            <button onClick={() => setActiveSection("goals")}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeSection === "goals" ? "bg-violet-500/20 text-violet-400" : "text-white/30"}`}>
-              <Target className="h-3.5 w-3.5" /> Goals
-            </button>
-          </div>
+          ))}
         </motion.div>
 
-        {/* add button — hidden on goals tab */}
-        {activeSection !== "goals" && (
-        <motion.button variants={fade} custom={3} initial="hidden" animate="show"
-          onClick={() => openAdd(activeSection as "income" | "expense")}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm text-white"
-          style={{ background: activeSection === "income" ? "linear-gradient(135deg, #10b981, #059669)" : "linear-gradient(135deg, #ef4444, #dc2626)" }}>
-          <Plus className="h-4 w-4" />
-          Add Fixed {activeSection === "income" ? "Income" : "Expense"}
-        </motion.button>
-        )}
-
-        {/* list */}
         <AnimatePresence mode="wait">
           {activeSection === "goals" ? (
-            <motion.div key="goals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-              <div className="rounded-3xl p-5 space-y-5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-violet-400" />
-                  <p className="text-sm font-bold text-white">Financial Goals</p>
-                </div>
-
-                {/* savings target */}
+            <motion.section key="goals" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4, ease: EASE }} className="bezel lg:col-span-7 lg:col-start-6">
+              <div className="bezel-core space-y-6 p-5">
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <p className="text-xs font-semibold text-white/70">💰 Savings Target</p>
-                    <p className="text-xs font-black text-violet-400">{goalForm.savings_target}%</p>
-                  </div>
-                  <input type="range" min={5} max={80} step={5}
-                    value={goalForm.savings_target}
-                    onChange={e => setGoalForm(f => ({ ...f, savings_target: parseInt(e.target.value) }))}
-                    className="w-full accent-violet-500 h-2 rounded-full bg-white/10 appearance-none cursor-pointer" />
-                  <div className="flex justify-between mt-1">
-                    <p className="text-[10px] text-white/20">5%</p>
-                    <p className="text-[10px] text-white/20">80%</p>
-                  </div>
+                  <h2 className="text-base font-semibold">Monthly targets</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Share of income you want to keep and invest. Home tracks progress against these.</p>
                 </div>
 
-                {/* investment target */}
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <p className="text-xs font-semibold text-white/70">📈 Investment Target</p>
-                    <p className="text-xs font-black text-emerald-400">{goalForm.investment_target}%</p>
+                {[
+                  { key: "savings_target" as const,    label: "Save",   min: 5, max: 80, color: COLOR.accent },
+                  { key: "investment_target" as const, label: "Invest", min: 5, max: 50, color: COLOR.ink },
+                ].map(g => (
+                  <div key={g.key}>
+                    <div className="mb-3 flex items-baseline justify-between">
+                      <label htmlFor={g.key} className="text-sm text-foreground/80">{g.label}</label>
+                      <p className="num-display text-2xl font-semibold">{goalForm[g.key]}<span className="text-base text-muted-foreground">%</span></p>
+                    </div>
+                    <input id={g.key} type="range" min={g.min} max={g.max} step={5}
+                      value={goalForm[g.key]}
+                      onChange={e => setGoalForm(f => ({ ...f, [g.key]: parseInt(e.target.value) }))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-foreground [&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(255,255,255,0.08)] [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-foreground"
+                      style={{ backgroundImage: `linear-gradient(${g.color}, ${g.color})`, backgroundSize: `${((goalForm[g.key] - g.min) / (g.max - g.min)) * 100}% 100%`, backgroundRepeat: "no-repeat" }} />
+                    <div className="mt-2 flex justify-between text-[11px] text-muted-foreground/70 font-mono-nums">
+                      <span>{g.min}%</span><span>{g.max}%</span>
+                    </div>
                   </div>
-                  <input type="range" min={5} max={50} step={5}
-                    value={goalForm.investment_target}
-                    onChange={e => setGoalForm(f => ({ ...f, investment_target: parseInt(e.target.value) }))}
-                    className="w-full accent-emerald-500 h-2 rounded-full bg-white/10 appearance-none cursor-pointer" />
-                  <div className="flex justify-between mt-1">
-                    <p className="text-[10px] text-white/20">5%</p>
-                    <p className="text-[10px] text-white/20">50%</p>
-                  </div>
+                ))}
+
+                <div className="well flex items-center justify-between px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Committed</p>
+                  <p className={`text-sm font-medium font-mono-nums ${goalForm.savings_target + goalForm.investment_target > 100 ? "text-destructive" : "text-foreground"}`}>
+                    {goalForm.savings_target + goalForm.investment_target}% of income
+                  </p>
                 </div>
 
-                <div className="bg-white/5 rounded-2xl p-3 space-y-1.5">
-                  <p className="text-[10px] text-white/30 uppercase tracking-widest">Summary</p>
-                  <div className="flex justify-between">
-                    <p className="text-xs text-white/50">Savings goal</p>
-                    <p className="text-xs font-bold text-violet-400">{goalForm.savings_target}% of income</p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-xs text-white/50">Investment goal</p>
-                    <p className="text-xs font-bold text-emerald-400">{goalForm.investment_target}% of income</p>
-                  </div>
-                  <div className="flex justify-between border-t border-white/5 pt-1.5 mt-1">
-                    <p className="text-xs text-white/50">Total committed</p>
-                    <p className={`text-xs font-bold ${goalForm.savings_target + goalForm.investment_target > 100 ? "text-red-400" : "text-white"}`}>
-                      {goalForm.savings_target + goalForm.investment_target}%
-                    </p>
-                  </div>
-                </div>
-
-                <button onClick={() => {
-                  localStorage.setItem("cashflow_goals", JSON.stringify(goalForm));
-                  setGoals(goalForm);
-                  window.dispatchEvent(new Event("goals-updated"));
-                }}
-                  className="w-full py-3 rounded-2xl font-black text-sm text-white"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                  Save Goals
+                <button onClick={saveGoals} className="btn-primary w-full justify-between">
+                  <span>{goalsSaved ? "Goals saved" : "Save goals"}</span>
+                  <span className="btn-primary-icon">{goalsSaved ? <Check className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}</span>
                 </button>
               </div>
-            </motion.div>
+            </motion.section>
           ) : (
-            <motion.div key={activeSection} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
-              {activeSection === "income" ? (
-              incomes.length === 0 ? (
-                <div className="rounded-3xl p-10 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <TrendingUp className="h-10 w-10 text-white/10 mx-auto mb-3" />
-                  <p className="text-sm text-white/40">No fixed income added yet</p>
-                  <p className="text-xs text-white/20 mt-1">Add salary, rent income, freelance…</p>
+            <motion.section key={activeSection} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4, ease: EASE }} className="bezel lg:col-span-7 lg:col-start-6">
+              <div className="bezel-core px-4 pt-4 pb-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-semibold">{activeSection === "income" ? "Fixed income" : "Fixed costs"}</h2>
+                  <button onClick={() => openAdd(activeSection)} className="btn-ghost py-1.5 pl-2 pr-3.5 text-xs">
+                    <Plus className="h-3.5 w-3.5" /> Add
+                  </button>
                 </div>
-              ) : incomes.map((e, i) => renderEntry(e, i))
-            ) : (
-              expenses.length === 0 ? (
-                <div className="rounded-3xl p-10 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <TrendingDown className="h-10 w-10 text-white/10 mx-auto mb-3" />
-                  <p className="text-sm text-white/40">No fixed expenses added yet</p>
-                  <p className="text-xs text-white/20 mt-1">Add rent, EMIs, subscriptions…</p>
-                </div>
-              ) : expenses.map((e, i) => renderEntry(e, i))
-            )}
-            </motion.div>
+                {list.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-sm text-foreground/70">
+                      {activeSection === "income" ? "No fixed income yet" : "No fixed costs yet"}
+                    </p>
+                    <p className="mx-auto mt-1 max-w-[28ch] text-xs text-muted-foreground">
+                      {activeSection === "income" ? "Add salary, rental income or a pension." : "Add rent, EMIs, insurance or subscriptions."}
+                    </p>
+                    <button onClick={() => openAdd(activeSection)} className="btn-primary mt-6">
+                      Add {activeSection === "income" ? "income" : "a cost"}
+                      <span className="btn-primary-icon"><Plus className="h-4 w-4" /></span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/[0.05]">{list.map((e, i) => renderEntry(e, i))}</div>
+                )}
+              </div>
+            </motion.section>
           )}
         </AnimatePresence>
 
-        {/* AI tip */}
+        {/* insight */}
         {(totalIncome > 0 || totalExpense > 0) && (
-          <motion.div variants={fade} custom={99} initial="hidden" animate="show"
-            className="rounded-2xl p-4" style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)" }}>
-            <div className="flex items-center gap-2 mb-1.5">
-              <Zap className="h-3.5 w-3.5 text-violet-400" />
-              <p className="text-xs font-bold text-violet-400">AI Insight</p>
-            </div>
-            <p className="text-xs text-white/50 leading-relaxed">
+          <motion.section variants={fade} custom={4} initial="hidden" animate="show"
+            className="flex gap-3 rounded-[1.75rem] bg-white/[0.025] p-5 ring-1 ring-inset ring-white/[0.06] lg:col-span-7 lg:col-start-6">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-sm leading-relaxed text-foreground/75">
               {totalIncome === 0
-                ? "Add your fixed income sources to unlock earn vs spend tracking."
-                : totalExpense / totalIncome > 0.6
-                ? `Fixed costs consume ${((totalExpense / totalIncome) * 100).toFixed(0)}% of fixed income — that's high. Try reducing subscriptions or renegotiating bills.`
-                : totalExpense / totalIncome > 0.4
-                ? `Fixed costs are ${((totalExpense / totalIncome) * 100).toFixed(0)}% of fixed income. Aim to keep this under 40% for financial breathing room.`
-                : `Great balance! Fixed costs are only ${((totalExpense / totalIncome) * 100).toFixed(0)}% of fixed income.`}
+                ? "Add your fixed income to compare it against fixed costs."
+                : fixedRatio > 0.6
+                ? `Fixed costs take ${(fixedRatio * 100).toFixed(0)}% of fixed income, which is high. Subscriptions and renegotiable bills are the easiest place to start.`
+                : fixedRatio > 0.4
+                ? `Fixed costs are ${(fixedRatio * 100).toFixed(0)}% of fixed income. Keeping this under 40% leaves room to save.`
+                : `Fixed costs are ${(fixedRatio * 100).toFixed(0)}% of fixed income, a healthy balance.`}
             </p>
-          </motion.div>
+          </motion.section>
         )}
-      </div>
+      </main>
 
-      {/* modal */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-end justify-center px-4 pb-6"
-            onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
-            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="w-full max-w-md rounded-3xl p-5 space-y-4 mb-16"
-              style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <div className="flex items-center justify-between">
-                <p className="text-base font-black text-white">
-                  {editId ? "Edit" : "Add"} Fixed {form.entry_type === "income" ? "Income" : "Expense"}
-                </p>
-                <button onClick={() => setShowForm(false)} className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center">
-                  <X className="h-3.5 w-3.5 text-white/60" />
-                </button>
-              </div>
-
-              {!editId && (
-                <div className="grid grid-cols-2 gap-2">
-                  {(["income", "expense"] as const).map(t => (
-                    <button key={t} onClick={() => {
-                      const newCats = t === "income" ? INCOME_CATS : EXPENSE_CATS;
-                      setForm(f => ({ ...f, entry_type: t, category: newCats[0].name, emoji: newCats[0].emoji }));
-                    }}
-                      className={`py-2.5 rounded-2xl text-xs font-bold transition-all ${form.entry_type === t
-                        ? t === "income" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"
-                        : "bg-white/5 text-white/30"}`}>
-                      {t === "income" ? "💰 Income" : "📌 Expense"}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-widest block mb-1.5">Name</label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder={form.entry_type === "income" ? "e.g. Salary, Rent Income…" : "e.g. Rent, Netflix, EMI…"}
-                  className="bg-white/5 border-white/10 text-white rounded-xl" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-white/30 uppercase tracking-widest block mb-1.5">Amount (₹)</label>
-                  <Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                    placeholder="0" className="bg-white/5 border-white/10 text-white rounded-xl" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-white/30 uppercase tracking-widest block mb-1.5">Frequency</label>
-                  <select value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-3 py-2">
-                    {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ backgroundColor: "#0f172a" }}>{o.label}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] text-white/30 uppercase tracking-widest block mb-2">Category</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {cats.map(c => (
-                    <button key={c.name} onClick={() => pickCat(c.name)}
-                      className={`py-2 px-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${form.category === c.name
-                        ? form.entry_type === "income" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "bg-indigo-500/25 text-indigo-300 border border-indigo-500/40"
-                        : "bg-white/5 text-white/40"}`}>
-                      <span>{c.emoji}</span>{c.name.split(" ")[0]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {form.amount && (
-                <div className="bg-white/5 rounded-xl px-4 py-2.5 flex justify-between items-center">
-                  <p className="text-xs text-white/40">Monthly equivalent</p>
-                  <p className={`text-sm font-bold ${form.entry_type === "income" ? "text-emerald-400" : "text-indigo-400"}`}>
-                    ₹{toMonthly(parseFloat(form.amount) || 0, form.frequency).toFixed(0)}/mo
-                  </p>
-                </div>
-              )}
-
-              {error && <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-xl">{error}</p>}
-
-              <button onClick={handleSave} disabled={saving}
-                className="w-full py-3.5 rounded-2xl font-black text-sm text-white disabled:opacity-50"
-                style={{ background: form.entry_type === "income" ? "linear-gradient(135deg, #10b981, #059669)" : "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                {saving ? "Saving…" : editId ? "Update" : "Add"}
+      {/* add / edit sheet */}
+      <BottomSheet open={showForm} onClose={() => setShowForm(false)}
+        title={`${editId ? "Edit" : "Add"} fixed ${form.entry_type === "income" ? "income" : "cost"}`}>
+        {!editId && (
+          <div className="segmented">
+            {(["income", "expense"] as const).map(t => (
+              <button key={t} onClick={() => {
+                const newCats = t === "income" ? INCOME_CATS : EXPENSE_CATS;
+                setForm(f => ({ ...f, entry_type: t, category: newCats[0].name, emoji: newCats[0].emoji }));
+              }}
+                className={`segmented-item py-2 text-sm ${form.entry_type === t ? "text-foreground" : ""}`}>
+                {form.entry_type === t && (
+                  <motion.span layoutId="fixed-type" className="absolute inset-0 rounded-full bg-white/[0.09]" transition={SPRING} />
+                )}
+                <span className="relative">{t === "income" ? "Income" : "Cost"}</span>
               </button>
-            </motion.div>
-          </motion.div>
+            ))}
+          </div>
         )}
-      </AnimatePresence>
+
+        <div>
+          <label htmlFor="fx-name" className="field-label">Name</label>
+          <input id="fx-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            placeholder={form.entry_type === "income" ? "Salary, rental income…" : "Rent, Netflix, car EMI…"}
+            className="field w-full" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="fx-amount" className="field-label">Amount (₹)</label>
+            <input id="fx-amount" type="number" inputMode="decimal" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              placeholder="0" className="field w-full font-mono-nums" />
+          </div>
+          <div>
+            <label htmlFor="fx-freq" className="field-label">Frequency</label>
+            <select id="fx-freq" value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}
+              className="field w-full appearance-none">
+              {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value} style={{ backgroundColor: "#141416" }}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <p className="field-label">Category</p>
+          <div className="flex flex-wrap gap-2">
+            {cats.map(c => {
+              const on = form.category === c.name;
+              return (
+                <button key={c.name} onClick={() => pickCat(c.name)}
+                  className={`flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-xs font-medium transition-all duration-300 ease-premium ${on
+                    ? "bg-white/[0.1] text-foreground ring-1 ring-inset ring-white/15"
+                    : "bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}>
+                  <CategoryIcon name={c.name} size="sm" className="h-6 w-6 rounded-full" />
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {form.amount && (
+          <div className="well flex items-center justify-between px-4 py-3">
+            <p className="text-xs text-muted-foreground">Monthly equivalent</p>
+            <p className="text-sm font-medium font-mono-nums">
+              ₹{toMonthly(parseFloat(form.amount) || 0, form.frequency).toFixed(0)}/mo
+            </p>
+          </div>
+        )}
+
+        {error && <p role="alert" className="rounded-2xl bg-destructive/10 px-4 py-2.5 text-xs text-destructive">{error}</p>}
+
+        <button onClick={handleSave} disabled={saving} className="btn-primary w-full justify-between">
+          <span>{saving ? "Saving…" : editId ? "Update entry" : "Add entry"}</span>
+          <span className="btn-primary-icon">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}</span>
+        </button>
+      </BottomSheet>
     </>
   );
 }

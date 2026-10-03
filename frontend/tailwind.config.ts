@@ -13,6 +13,18 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      transitionTimingFunction: {
+        premium: "cubic-bezier(0.32, 0.72, 0, 1)",
+      },
+      zIndex: {
+        nav: "40",
+        overlay: "60",
+        sheet: "70",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -48,10 +60,11 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         mint: "hsl(var(--chart-mint))",
-        "chart-blue": "hsl(var(--chart-blue))",
-        "chart-indigo": "hsl(var(--chart-indigo))",
-        "chart-amber": "hsl(var(--chart-amber))",
-        "chart-rose": "hsl(var(--chart-rose))",
+        gold: "hsl(var(--chart-gold))",
+        "chart-sage": "hsl(var(--chart-sage))",
+        "chart-rust": "hsl(var(--chart-rust))",
+        "chart-clay": "hsl(var(--chart-clay))",
+        "chart-stone": "hsl(var(--chart-stone))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

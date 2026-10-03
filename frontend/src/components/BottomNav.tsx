@@ -1,30 +1,28 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Calendar, User, MessageCircle, Plus, Upload } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef } from "react";
-import { Input } from "@/components/ui/input";
+import { LayoutGrid, MessageSquareText, FileUp, CalendarRange, CircleUser, ArrowUpRight, Check } from "lucide-react";
+import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
 import { transactionsApi } from "@/lib/api";
-
-
+import { BottomSheet, CategoryIcon, EASE, SPRING } from "@/lib/design";
 
 const tabs = [
-  { path: "/",        label: "Home",      icon: Home          },
-  { path: "/advisor", label: "AI Advisor", icon: MessageCircle },
-  { path: "/upload",  label: "Import",    icon: Upload        },
-  { path: "/planner", label: "Planner",   icon: Calendar      },
-  { path: "/profile", label: "Profile",   icon: User          },
+  { path: "/",        label: "Home",    icon: LayoutGrid        },
+  { path: "/advisor", label: "Advisor", icon: MessageSquareText },
+  { path: "/upload",  label: "Import",  icon: FileUp            },
+  { path: "/planner", label: "Planner", icon: CalendarRange     },
+  { path: "/profile", label: "Profile", icon: CircleUser        },
 ];
 const CATEGORIES = [
-  { id: 1,  name: "Food",      emoji: "🍽️" },
-  { id: 2,  name: "Shopping",  emoji: "🛍️" },
-  { id: 3,  name: "Transport", emoji: "🚗" },
-  { id: 4,  name: "Fun",       emoji: "🎬" },
-  { id: 5,  name: "Health",    emoji: "❤️" },
-  { id: 6,  name: "Other",     emoji: "📦" },
-  { id: 7,  name: "Utilities", emoji: "⚡" },
-  { id: 8,  name: "Education", emoji: "📚" },
-  { id: 9,  name: "Invest",    emoji: "📈" },
-  { id: 10, name: "Income",    emoji: "💰" },
+  { id: 1,  name: "Food"      },
+  { id: 2,  name: "Shopping"  },
+  { id: 3,  name: "Transport" },
+  { id: 4,  name: "Fun"       },
+  { id: 5,  name: "Health"    },
+  { id: 6,  name: "Other"     },
+  { id: 7,  name: "Utilities" },
+  { id: 8,  name: "Education" },
+  { id: 9,  name: "Invest"    },
+  { id: 10, name: "Income"    },
 ];
 
 const EMPTY_FORM = {
@@ -41,6 +39,13 @@ export default function BottomNav() {
   const [error, setError]   = useState("");
   const [done, setDone]     = useState(false);
 
+  // other screens open the sheet through a window event
+  useEffect(() => {
+    const open = () => setShowSheet(true);
+    window.addEventListener("open-add-txn", open);
+    return () => window.removeEventListener("open-add-txn", open);
+  }, []);
+
   const touchStartY = useRef<number>(0);
   const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
   const handleTouchEnd   = (e: React.TouchEvent) => {
@@ -48,7 +53,7 @@ export default function BottomNav() {
   };
 
   const handleSave = async () => {
-    if (!form.amount) { setError("Enter an amount"); return; }
+    if (!form.amount) { setError("Enter an amount to continue."); return; }
     setSaving(true); setError("");
     try {
       await transactionsApi.create({
@@ -66,135 +71,115 @@ export default function BottomNav() {
         setForm({ ...EMPTY_FORM, date: new Date().toISOString().split("T")[0] });
         window.dispatchEvent(new Event("txn-added"));
       }, 800);
-    } catch (e: any) { setError(e.response?.data?.detail || "Failed"); }
+    } catch (e: any) { setError(e.response?.data?.detail || "Couldn't save this transaction. Try again."); }
     finally { setSaving(false); }
   };
 
+  const isExpense = form.type === "expense";
+
   return (
     <>
-      {/* bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-2 px-4"
+      {/* floating island nav */}
+      <nav aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-nav flex justify-center px-4 lg:hidden pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none"
         onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        <div className="w-full max-w-md rounded-2xl px-2 py-2 flex items-center justify-around relative"
-          style={{ background: "rgba(10,13,28,0.92)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
-
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none">
-            <div className="w-8 h-0.5 rounded-full bg-white/20" />
-          </div>
-
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full p-1.5 nav-material ring-1 ring-white/[0.08] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.06)]">
           {tabs.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
             return (
               <button key={path} onClick={() => navigate(path)}
-                className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all relative"
-                style={{ minWidth: 52 }}>
+                aria-label={label} aria-current={active ? "page" : undefined}
+                className={`relative flex h-11 items-center justify-center gap-2 rounded-full transition-[padding,color] duration-500 ease-premium ${active ? "px-4 text-background" : "w-11 text-foreground/45 hover:text-foreground/80"}`}>
                 {active && (
-                  <motion.div layoutId="nav-pill" className="absolute inset-0 rounded-xl"
-                    style={{ background: "rgba(99,102,241,0.15)" }}
-                    transition={{ type: "spring", damping: 24, stiffness: 300 }} />
+                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-foreground"
+                    transition={SPRING} />
                 )}
-                <Icon className={`h-5 w-5 relative z-10 transition-colors ${active ? "text-indigo-400" : "text-white/30"}`} />
-                <span className={`text-[10px] font-semibold relative z-10 transition-colors ${active ? "text-indigo-400" : "text-white/30"}`}>
-                  {label}
-                </span>
+                <Icon className="relative h-[18px] w-[18px]" />
+                {active && (
+                  <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, ease: EASE, delay: 0.05 }}
+                    className="relative text-xs font-semibold">
+                    {label}
+                  </motion.span>
+                )}
               </button>
             );
           })}
-      {/* floating + button — home only */}
-      {location.pathname === "/" && (
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowSheet(true)}
-          className="absolute -top-16 right-25 h-11 w-11 rounded-2xl flex items-center justify-center shadow-lg"
-          style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-          <Plus className="h-5 w-5 text-white" />
-        </motion.button>
-      )}
         </div>
-      </div>
+      </nav>
 
       {/* add transaction sheet */}
-      <AnimatePresence>
-        {showSheet && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
-              onClick={() => setShowSheet(false)} />
+      <BottomSheet open={showSheet} onClose={() => setShowSheet(false)} title="Add transaction"
+        headerExtra={
+          <div className="segmented w-44" onPointerDown={(e) => e.stopPropagation()}>
+            {(["expense", "income"] as const).map(t => (
+              <button key={t} onClick={() => setForm(f => ({ ...f, type: t }))}
+                className={`segmented-item py-1.5 ${form.type === t ? "text-foreground" : ""}`}>
+                {form.type === t && (
+                  <motion.span layoutId="txn-type" className="absolute inset-0 rounded-full bg-white/[0.09] ring-1 ring-inset ring-white/[0.08]"
+                    transition={SPRING} />
+                )}
+                <span className="relative capitalize">{t}</span>
+              </button>
+            ))}
+          </div>
+        }>
+        {/* amount */}
+        <label className="block text-center">
+          <span className="text-xs font-medium text-muted-foreground">Amount</span>
+          <div className="flex items-baseline justify-center gap-1 py-2">
+            <span className={`shrink-0 whitespace-nowrap text-2xl font-medium ${isExpense ? "text-chart-rust/70" : "text-primary/70"}`}>
+              {isExpense ? "−₹" : "+₹"}
+            </span>
+            <input type="number" inputMode="decimal" value={form.amount}
+              onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              placeholder="0" autoFocus
+              style={{ width: `${Math.min(Math.max(form.amount.length, 1), 10) + 0.6}ch` }}
+              className="num-display min-w-0 bg-transparent text-left text-5xl font-semibold text-foreground placeholder:text-white/15 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+          </div>
+        </label>
 
-            <motion.div
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              drag="y" dragConstraints={{ top: 0 }} dragElastic={0.1}
-              onDragEnd={(_, info) => { if (info.offset.y > 80) setShowSheet(false); }}
-              className="fixed bottom-0 left-0 right-0 z-[100] flex justify-center px-4 pb-6">
-              <div className="w-full max-w-md rounded-3xl p-5 space-y-4"
-                style={{ background: "#0c1022", border: "1px solid rgba(255,255,255,0.1)" }}>
+        {/* category chips */}
+        <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 scrollbar-hide">
+          {CATEGORIES.map(c => {
+            const on = form.category_id === String(c.id);
+            return (
+              <button key={c.id} onClick={() => setForm(f => ({ ...f, category_id: String(c.id) }))}
+                className={`flex shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-3.5 text-xs font-medium transition-all duration-300 ease-premium ${on
+                  ? "bg-white/[0.1] text-foreground ring-1 ring-inset ring-white/15"
+                  : "bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}>
+                <CategoryIcon name={c.name} size="sm" className="h-7 w-7 rounded-full" />
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
 
-                {/* drag handle */}
-                <div className="flex justify-center -mt-1 mb-1">
-                  <div className="w-10 h-1 rounded-full bg-white/20" />
-                </div>
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <div>
+            <label htmlFor="txn-note" className="field-label">Note <span className="text-muted-foreground/60">(optional)</span></label>
+            <input id="txn-note" value={form.note}
+              onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+              placeholder="Dinner with Aarav"
+              className="field w-full" />
+          </div>
+          <div>
+            <label htmlFor="txn-date" className="field-label">Date</label>
+            <input id="txn-date" type="date" value={form.date}
+              onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              className="field w-[9.5rem] font-mono-nums text-xs" />
+          </div>
+        </div>
 
-                <p className="text-base font-black text-white">Add Transaction</p>
+        {error && <p role="alert" className="rounded-2xl bg-destructive/10 px-4 py-2.5 text-xs text-destructive">{error}</p>}
 
-                {/* expense / income */}
-                <div className="grid grid-cols-2 gap-2">
-                  {["expense", "income"].map(t => (
-                    <button key={t} onClick={() => setForm(f => ({ ...f, type: t }))}
-                      className={`py-2.5 rounded-2xl text-sm font-bold transition-all ${form.type === t
-                        ? t === "expense" ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                         : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : "bg-white/5 text-white/30"}`}>
-                      {t === "expense" ? "− Expense" : "+ Income"}
-                    </button>
-                  ))}
-                </div>
-
-                {/* amount */}
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-lg font-bold">₹</span>
-                  <Input type="number" value={form.amount}
-                    onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                    placeholder="0"
-                    className="bg-white/5 border-white/10 text-white rounded-xl text-2xl font-black h-14 pl-9"
-                    autoFocus />
-                </div>
-
-                {/* category pills */}
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {CATEGORIES.map(c => (
-                    <button key={c.id} onClick={() => setForm(f => ({ ...f, category_id: String(c.id) }))}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
-                        form.category_id === String(c.id)
-                          ? "bg-indigo-500/30 text-indigo-300 border border-indigo-500/40"
-                          : "bg-white/5 text-white/40"}`}>
-                      {c.emoji} {c.name}
-                    </button>
-                  ))}
-                </div>
-
-                {/* optional note */}
-                <Input value={form.note}
-                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                  placeholder="📝 Add a note… (optional)"
-                  className="bg-white/5 border-white/10 text-white/70 rounded-xl text-sm placeholder:text-white/25" />
-
-                {/* date */}
-                <Input type="date" value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white rounded-xl text-sm" />
-
-                {error && <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-xl">{error}</p>}
-
-                <motion.button onClick={handleSave} disabled={saving || done}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full py-4 rounded-2xl font-black text-sm text-white disabled:opacity-60"
-                  style={{ background: done ? "linear-gradient(135deg,#10b981,#059669)" : "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>
-                  {done ? "✓ Saved!" : saving ? "Saving…" : "Save Transaction"}
-                </motion.button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        <button onClick={handleSave} disabled={saving || done} className="btn-primary w-full justify-between">
+          <span>{done ? "Saved" : saving ? "Saving…" : "Save transaction"}</span>
+          <span className="btn-primary-icon">
+            {done ? <Check className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+          </span>
+        </button>
+      </BottomSheet>
     </>
   );
 }
