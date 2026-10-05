@@ -29,14 +29,17 @@ app = FastAPI(
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    # Starlette's default 500 handler runs outside CORSMiddleware, so the
-    # browser can't read it and reports a generic network failure instead
-    # of the real error. Handling it here keeps the response inside the
-    # middleware stack so CORS headers (and a useful body) still go out.
+    # FastAPI routes a catch-all Exception handler to ServerErrorMiddleware,
+    # which Starlette always places OUTSIDE user middleware (including
+    # CORSMiddleware) so it can catch errors raised inside middleware too.
+    # That means CORSMiddleware never touches this response, so the browser
+    # can't read it and reports a generic network failure instead of the
+    # real error. Add the header here directly instead of relying on CORS.
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
+        headers={"Access-Control-Allow-Origin": "*"},
     )
 
 @app.get("/")
